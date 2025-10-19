@@ -13,8 +13,8 @@
 
 * JSON API
 * WeActStudio ESP32-C3 Core Board
-* (DHT-22)\[https://github.com/dvarrel/DHT22.git] Temperature \& Humidity Sensor
-* (cJSON)\[https://github.com/DaveGamble/cJSON]
+* [DHT-22](https://github.com/dvarrel/DHT22.git) Temperature \& Humidity Sensor
+* [cJSON](https://github.com/DaveGamble/cJSON)
 
 ## TODOs
 
