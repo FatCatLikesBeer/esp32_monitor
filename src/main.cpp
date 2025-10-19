@@ -1,45 +1,102 @@
 #include <Arduino.h>
 #include "cJSON.h"
 #include "dht22.h"
-#define ARBITRARY_ID "955f0437370605b644dd5168f7432ecb91046249"
+#include "wifi.h"
 
-// Returns monitor data in JSON
-char *monitorData(float[6]);
+#define ARBITRARY_ID "955f0437370605b644dd5168f7432ecb91046249"
+#define SERVER_DESTINATION "10.0.0.41:3000"
+#define LED_LOW LOW
+#define LED_HIGH HIGH
 
 // Constants and state
-const int LED = 8;
-bool LED_STATE = false;
-DHT22 sensor1(0), sensor2(1), sensor3(2);
+const int LED = 9;
+const int BUTTON = 21;
+const char *wifi_ssid = "MySpectrumWiFi00-2G";
+const char *wifi_pswd = "proudzebra986";
+const char *server = "10.0.0.41";
+const int port = 8000;
+const String header1 =  "POST / HTTP/1.1\n"
+                        "Host: ";
+const String header2 =  "Content-Type: application/json\n"
+                        "Content-Length:";
 
-// Toggles LED state
-bool toggleLED() {
-  return LED_STATE = !LED_STATE;
-}
+DHT22 sensor1(0), sensor2(1), sensor3(2);
+WiFiClient client;
+
+/////////////
+//// Function Declarations
+/////////////
+// Pull Data from Sensors
+char *sensor_data_as_JSON(float[6]);
+// Blink quickly every 2-3 seconds
+void LED_indicate_stable();
+// Blink slowly eveery 4-5 seconds
+void LED_indicate_warning();
 
 void setup() {
   Serial.begin(9600);
-  Serial.println("Starting...");
   pinMode(LED, OUTPUT);
+  pinMode(BUTTON, INPUT_PULLDOWN);
+  digitalWrite(LED, LED_LOW);
+  
+  // Init Wifi
+  WiFi.begin(wifi_ssid, wifi_pswd);
+  byte ssid_total = WiFi.scanNetworks();
+
+  while (WL_CONNECTED != WiFi.status()) {
+    Serial.println("Attempting to connect to WIFI");
+    Serial.print("Networks found: ");
+    Serial.println(ssid_total);
+
+    LED_indicate_warning();
+    delay(5000);
+  }
+
+  Serial.print("Networks found: ");
+  Serial.println(ssid_total);
+  Serial.print("WiFi Connected to: ");
+  Serial.println(wifi_ssid);
+
   delay(1000);
 }
 
 void loop() {
+  // Get Data
   float t1 = sensor1.getTemperature(0), h1 = sensor1.getHumidity();
   float t2 = sensor2.getTemperature(0), h2 = sensor2.getHumidity();
   float t3 = sensor3.getTemperature(0), h3 = sensor3.getHumidity();
   float data[6] = {t1, h1, t2, h2, t3, h3};
 
-  char *result = monitorData(data);
+  // Connect to server
+  client.connect(server, port);
 
-  Serial.print(result);
+  // Format Data
+  String s_result(sensor_data_as_JSON(data));
 
-  digitalWrite(LED, LOW);
-  delay(100);
-  digitalWrite(LED, HIGH);
-  delay(900);
+  // Send Data
+  String header = "POST / HTTP/1.1\n"
+                  "Host: 10.0.0.41:8000\n"
+                  "Content-Type: application/json\n"
+                  "Content-Length:";
+
+  client.print(header);
+  client.printf("%d\n\n", s_result.length());
+  client.println(s_result);
+
+  while (client.connected())
+  {
+    String line = client.readStringUntil('\n');
+    if (line == "\r") break;
+    Serial.println(line);
+  }
+
+  // Do Stuff With UI
+  client.stop();
+  LED_indicate_stable();
+  delay(10000);
 }
 
-char *monitorData(float data[6]) {
+char *sensor_data_as_JSON(float data[6]) {
   cJSON *result = cJSON_CreateObject();
   cJSON *temp1 = cJSON_CreateNumber(data[0]);
   cJSON *hume1 = cJSON_CreateNumber(data[1]);
@@ -73,3 +130,39 @@ char *monitorData(float data[6]) {
   cJSON_Delete(result);
   return string;
 }
+
+// Few quick blinks every 2-3 seconds
+void LED_indicate_stable(void) {
+  ulong base_time = millis(), on_time = millis();
+  bool state = true;
+
+  digitalWrite(LED, LED_HIGH);
+  while (state) {
+    if (millis() > (on_time + 200))
+    {
+      on_time = millis();
+      digitalWrite(LED, !digitalRead(LED));
+    }
+
+    if (millis() > (base_time + 1000)) state = false;
+  }
+  digitalWrite(LED, LED_LOW);
+}
+
+void LED_indicate_warning(void) {
+  ulong base_time = millis(), on_time = millis();
+  bool state = true;
+
+  digitalWrite(LED, LED_HIGH);
+  while (state) {
+    if (millis() > (on_time + 1000))
+    {
+      on_time = millis();
+      digitalWrite(LED, !digitalRead(LED));
+    }
+
+    if (millis() > (base_time + 5000)) state = false;
+  }
+  digitalWrite(LED, LED_LOW);}
+
+// TODO: Reformat header away from `header` to `header1` & `header2`
