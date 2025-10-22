@@ -83,14 +83,15 @@ void loop() {
   client.printf("%d\n\n", s_result.length());
   client.println(s_result);
 
-  while (client.connected())
-  {
-    String line = client.readStringUntil('\n');
-    if (line == "\r") break;
-    Serial.println(line);
-  }
+  // while (client.connected())
+  // {
+  //   String line = client.readStringUntil('\n');
+  //   if (line == "\r") break;
+  //   Serial.println(line);
+  // }
 
   // Do Stuff With UI
+  client.flush();
   client.stop();
   LED_indicate_stable();
   delay(10000);
@@ -166,3 +167,4 @@ void LED_indicate_warning(void) {
   digitalWrite(LED, LED_LOW);}
 
 // TODO: Reformat header away from `header` to `header1` & `header2`
+// TODO: Reformat doubles to fixed decimal places
