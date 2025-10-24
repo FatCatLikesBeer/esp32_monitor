@@ -1,7 +1,8 @@
-#include <Arduino.h>
+#include "WiFi.h"
 #include "cJSON.h"
 #include "dht22.h"
-#include "wifi.h"
+#include <Arduino.h>
+#include <cmath>
 
 #define ARBITRARY_ID "955f0437370605b644dd5168f7432ecb91046249"
 #define SERVER_DESTINATION "10.0.0.41:3000"
@@ -9,16 +10,16 @@
 #define LED_HIGH HIGH
 
 // Constants and state
-const int LED = 9;
+const int LED = 8;
 const int BUTTON = 21;
 const char *wifi_ssid = "MySpectrumWiFi00-2G";
 const char *wifi_pswd = "proudzebra986";
 const char *server = "10.0.0.41";
 const int port = 8000;
-const String header1 =  "POST / HTTP/1.1\n"
-                        "Host: ";
-const String header2 =  "Content-Type: application/json\n"
-                        "Content-Length:";
+const String header1 = "POST / HTTP/1.1\n"
+                       "Host: ";
+const String header2 = "Content-Type: application/json\n"
+                       "Content-Length:";
 
 DHT22 sensor1(0), sensor2(1), sensor3(2);
 WiFiClient client;
@@ -38,7 +39,7 @@ void setup() {
   pinMode(LED, OUTPUT);
   pinMode(BUTTON, INPUT_PULLDOWN);
   digitalWrite(LED, LED_LOW);
-  
+
   // Init Wifi
   WiFi.begin(wifi_ssid, wifi_pswd);
   byte ssid_total = WiFi.scanNetworks();
@@ -99,12 +100,12 @@ void loop() {
 
 char *sensor_data_as_JSON(float data[6]) {
   cJSON *result = cJSON_CreateObject();
-  cJSON *temp1 = cJSON_CreateNumber(data[0]);
-  cJSON *hume1 = cJSON_CreateNumber(data[1]);
-  cJSON *temp2 = cJSON_CreateNumber(data[2]);
-  cJSON *hume2 = cJSON_CreateNumber(data[3]);
-  cJSON *temp3 = cJSON_CreateNumber(data[4]);
-  cJSON *hume3 = cJSON_CreateNumber(data[5]);
+  cJSON *temp1 = cJSON_CreateNumber((float)data[0]);
+  cJSON *hume1 = cJSON_CreateNumber((float)data[1]);
+  cJSON *temp2 = cJSON_CreateNumber((float)data[2]);
+  cJSON *hume2 = cJSON_CreateNumber((float)data[3]);
+  cJSON *temp3 = cJSON_CreateNumber((float)data[4]);
+  cJSON *hume3 = cJSON_CreateNumber((float)data[5]);
   cJSON *name = cJSON_CreateString(ARBITRARY_ID);
   cJSON *sensor1 = cJSON_CreateNumber(1);
   cJSON *sensor2 = cJSON_CreateNumber(2);
@@ -139,13 +140,13 @@ void LED_indicate_stable(void) {
 
   digitalWrite(LED, LED_HIGH);
   while (state) {
-    if (millis() > (on_time + 200))
-    {
+    if (millis() > (on_time + 200)) {
       on_time = millis();
       digitalWrite(LED, !digitalRead(LED));
     }
 
-    if (millis() > (base_time + 1000)) state = false;
+    if (millis() > (base_time + 1000))
+      state = false;
   }
   digitalWrite(LED, LED_LOW);
 }
@@ -156,15 +157,16 @@ void LED_indicate_warning(void) {
 
   digitalWrite(LED, LED_HIGH);
   while (state) {
-    if (millis() > (on_time + 1000))
-    {
+    if (millis() > (on_time + 1000)) {
       on_time = millis();
       digitalWrite(LED, !digitalRead(LED));
     }
 
-    if (millis() > (base_time + 5000)) state = false;
+    if (millis() > (base_time + 5000))
+      state = false;
   }
-  digitalWrite(LED, LED_LOW);}
+  digitalWrite(LED, LED_LOW);
+}
 
-// TODO: Reformat header away from `header` to `header1` & `header2`
 // TODO: Reformat doubles to fixed decimal places
+// TODO: Reformat header away from `header` to `header1` & `header2`
