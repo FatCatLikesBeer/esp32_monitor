@@ -3,18 +3,18 @@
 #include "dht22.h"
 #include <Arduino.h>
 #include <cmath>
+#include <string>
 
 #define ARBITRARY_ID "955f0437370605b644dd5168f7432ecb91046249"
-#define SERVER_DESTINATION "10.0.0.41:3000"
 #define LED_LOW LOW
 #define LED_HIGH HIGH
 
 // Constants and state
-const int LED = 8;
-const int BUTTON = 21;
+const int LED_PIN = 9;
+const int BUTTON_PIN = 21; // BUTTON NOT IN USE
 const char *wifi_ssid = "MySpectrumWiFi00-2G";
 const char *wifi_pswd = "proudzebra986";
-const char *server = "10.0.0.41";
+const char *server = "10.0.0.2";
 const int port = 8000;
 const String header1 = "POST / HTTP/1.1\n"
                        "Host: ";
@@ -36,9 +36,9 @@ void LED_indicate_warning();
 
 void setup() {
   Serial.begin(9600);
-  pinMode(LED, OUTPUT);
-  pinMode(BUTTON, INPUT_PULLDOWN);
-  digitalWrite(LED, LED_LOW);
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLDOWN);
+  digitalWrite(LED_PIN, LED_LOW);
 
   // Init Wifi
   WiFi.begin(wifi_ssid, wifi_pswd);
@@ -63,9 +63,9 @@ void setup() {
 
 void loop() {
   // Get Data
-  float t1 = sensor1.getTemperature(0), h1 = sensor1.getHumidity();
-  float t2 = sensor2.getTemperature(0), h2 = sensor2.getHumidity();
-  float t3 = sensor3.getTemperature(0), h3 = sensor3.getHumidity();
+  float t1 = sensor1.getTemperature(), h1 = sensor1.getHumidity();
+  float t2 = sensor2.getTemperature(), h2 = sensor2.getHumidity();
+  float t3 = sensor3.getTemperature(), h3 = sensor3.getHumidity();
   float data[6] = {t1, h1, t2, h2, t3, h3};
 
   // Connect to server
@@ -73,6 +73,7 @@ void loop() {
 
   // Format Data
   String s_result(sensor_data_as_JSON(data));
+  // String s_result(sensor_data_as_JSON(data, arbitrary_id));
 
   // Send Data
   String header = "POST / HTTP/1.1\n"
@@ -100,19 +101,17 @@ void loop() {
 
 char *sensor_data_as_JSON(float data[6]) {
   cJSON *result = cJSON_CreateObject();
-  cJSON *temp1 = cJSON_CreateNumber((float)data[0]);
-  cJSON *hume1 = cJSON_CreateNumber((float)data[1]);
-  cJSON *temp2 = cJSON_CreateNumber((float)data[2]);
-  cJSON *hume2 = cJSON_CreateNumber((float)data[3]);
-  cJSON *temp3 = cJSON_CreateNumber((float)data[4]);
-  cJSON *hume3 = cJSON_CreateNumber((float)data[5]);
   cJSON *name = cJSON_CreateString(ARBITRARY_ID);
-  cJSON *sensor1 = cJSON_CreateNumber(1);
-  cJSON *sensor2 = cJSON_CreateNumber(2);
-  cJSON *sensor3 = cJSON_CreateNumber(3);
+  cJSON *temp1 = cJSON_CreateNumber(data[0]);
+  cJSON *hume1 = cJSON_CreateNumber(data[1]);
+  cJSON *temp2 = cJSON_CreateNumber(data[2]);
+  cJSON *hume2 = cJSON_CreateNumber(data[3]);
+  cJSON *temp3 = cJSON_CreateNumber(data[4]);
+  cJSON *hume3 = cJSON_CreateNumber(data[5]);
   cJSON *block1 = cJSON_CreateObject();
   cJSON *block2 = cJSON_CreateObject();
   cJSON *block3 = cJSON_CreateObject();
+  cJSON *data_array = cJSON_CreateArray();
 
   cJSON_AddItemToObject(block1, "temperature", temp1);
   cJSON_AddItemToObject(block1, "humidity", hume1);
@@ -123,10 +122,11 @@ char *sensor_data_as_JSON(float data[6]) {
   cJSON_AddItemToObject(block3, "temperature", temp3);
   cJSON_AddItemToObject(block3, "humidity", hume3);
 
+  cJSON_AddItemToObject(data_array, "sensor1", block1);
+  cJSON_AddItemToObject(data_array, "sensor2", block2);
+  cJSON_AddItemToObject(data_array, "sensor3", block3);
   cJSON_AddItemToObject(result, "device_id", name);
-  cJSON_AddItemToObject(result, "sensor1", block1);
-  cJSON_AddItemToObject(result, "sensor2", block2);
-  cJSON_AddItemToObject(result, "sensor3", block3);
+  cJSON_AddItemToObject(result, "data", data_array);
 
   char *string = cJSON_Print(result);
   cJSON_Delete(result);
@@ -138,35 +138,35 @@ void LED_indicate_stable(void) {
   ulong base_time = millis(), on_time = millis();
   bool state = true;
 
-  digitalWrite(LED, LED_HIGH);
+  digitalWrite(LED_PIN, LED_HIGH);
   while (state) {
     if (millis() > (on_time + 200)) {
       on_time = millis();
-      digitalWrite(LED, !digitalRead(LED));
+      digitalWrite(LED_PIN, !digitalRead(LED_PIN));
     }
 
     if (millis() > (base_time + 1000))
       state = false;
   }
-  digitalWrite(LED, LED_LOW);
+  digitalWrite(LED_PIN, LED_LOW);
 }
 
 void LED_indicate_warning(void) {
   ulong base_time = millis(), on_time = millis();
   bool state = true;
 
-  digitalWrite(LED, LED_HIGH);
+  digitalWrite(LED_PIN, LED_HIGH);
   while (state) {
     if (millis() > (on_time + 1000)) {
       on_time = millis();
-      digitalWrite(LED, !digitalRead(LED));
+      digitalWrite(LED_PIN, !digitalRead(LED_PIN));
     }
 
     if (millis() > (base_time + 5000))
       state = false;
   }
-  digitalWrite(LED, LED_LOW);
+  digitalWrite(LED_PIN, LED_LOW);
 }
 
-// TODO: Reformat doubles to fixed decimal places
+// TODO: Fromat doubles to fixed decimal places
 // TODO: Reformat header away from `header` to `header1` & `header2`
