@@ -1,5 +1,5 @@
 #include "WiFi.h"
-// #include "cJSON.h"
+#include "cJSON.h"
 #include "dht22.h"
 #include "jsonmaker.hpp"
 #include <Arduino.h>
@@ -22,7 +22,7 @@ const String header1 = "POST / HTTP/1.1\n"
 const String header2 = "Content-Type: application/json\n"
                        "Content-Length:";
 float t1, t2, t3, h1, h2, h3;
-float data[6] = {t1, h1, t2, h2, t3, h3};
+float *sensor_data[6] = {&t1, &h1, &t2, &h2, &t3, &h3};
 
 DHT22 sensor1(0), sensor2(1), sensor3(2);
 WiFiClient client;
@@ -64,15 +64,23 @@ void setup() {
 
 void loop() {
   // Get Data
-  t1 = sensor1.getTemperature(), h1 = sensor1.getHumidity();
-  t2 = sensor2.getTemperature(), h2 = sensor2.getHumidity();
-  t3 = sensor3.getTemperature(), h3 = sensor3.getHumidity();
+  t1 = sensor1.getTemperature(0), h1 = sensor1.getHumidity();
+  t2 = sensor2.getTemperature(0), h2 = sensor2.getHumidity();
+  t3 = sensor3.getTemperature(0), h3 = sensor3.getHumidity();
+
+  Serial.printf("Raw sensor data for t1: %f \n", *sensor_data[0]);
 
   // Connect to server
   client.connect(server, port);
 
-  // Format Data
-  String s_result(sensor_data_as_JSON(data, device_id));
+  // Get cJSON result
+  cJSON *c_result = sensor_data_as_JSON(sensor_data, device_id);
+
+  // Format cJSON to string
+  String s_result(cJSON_Print(c_result));
+
+  // Delete cJSON
+  cJSON_Delete(c_result);
 
   // Send Data
   String header = "POST / HTTP/1.1\n"
@@ -91,9 +99,11 @@ void loop() {
   //   Serial.println(line);
   // }
 
-  // Do Stuff With UI
+  // Disconnect from Server
   client.flush();
   client.stop();
+
+  // Do Stuff With UI
   LED_indicate_stable();
   delay(10000);
 }

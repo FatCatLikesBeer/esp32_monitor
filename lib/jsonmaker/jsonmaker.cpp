@@ -1,15 +1,15 @@
 #include "jsonmaker.hpp"
 #include "cJSON.h"
 
-char *sensor_data_as_JSON(float data[6], const char device_id[]) {
+cJSON *sensor_data_as_JSON(float *data[6], const char device_id[]) {
   cJSON *result = cJSON_CreateObject();
   cJSON *name = cJSON_CreateString(device_id);
-  cJSON *temp1 = cJSON_CreateNumber(data[0]);
-  cJSON *hume1 = cJSON_CreateNumber(data[1]);
-  cJSON *temp2 = cJSON_CreateNumber(data[2]);
-  cJSON *hume2 = cJSON_CreateNumber(data[3]);
-  cJSON *temp3 = cJSON_CreateNumber(data[4]);
-  cJSON *hume3 = cJSON_CreateNumber(data[5]);
+  cJSON *temp1 = cJSON_CreateNumber(*data[0]);
+  cJSON *hume1 = cJSON_CreateNumber(*data[1]);
+  cJSON *temp2 = cJSON_CreateNumber(*data[2]);
+  cJSON *hume2 = cJSON_CreateNumber(*data[3]);
+  cJSON *temp3 = cJSON_CreateNumber(*data[4]);
+  cJSON *hume3 = cJSON_CreateNumber(*data[5]);
   cJSON *block1 = cJSON_CreateObject();
   cJSON *block2 = cJSON_CreateObject();
   cJSON *block3 = cJSON_CreateObject();
@@ -30,7 +30,5 @@ char *sensor_data_as_JSON(float data[6], const char device_id[]) {
   cJSON_AddItemToObject(result, "device_id", name);
   cJSON_AddItemToObject(result, "data", data_array);
 
-  char *string = cJSON_Print(result);
-  cJSON_Delete(result);
-  return string;
+  return result;
 }
