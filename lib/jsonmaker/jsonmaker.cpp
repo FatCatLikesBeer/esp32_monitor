@@ -1,9 +1,9 @@
 #include "jsonmaker.hpp"
 #include "cJSON.h"
 
-char *sensor_data_as_JSON(float data[6], char *ARBITRARY_ID) {
+char *sensor_data_as_JSON(float data[6], const char device_id[]) {
   cJSON *result = cJSON_CreateObject();
-  cJSON *name = cJSON_CreateString(ARBITRARY_ID);
+  cJSON *name = cJSON_CreateString(device_id);
   cJSON *temp1 = cJSON_CreateNumber(data[0]);
   cJSON *hume1 = cJSON_CreateNumber(data[1]);
   cJSON *temp2 = cJSON_CreateNumber(data[2]);
