@@ -4,12 +4,14 @@
 #include "jsonmaker.hpp"
 #include <Arduino.h>
 #include <cmath>
+#include <ctime>
 #include <string>
 
 #define LED_LOW LOW
 #define LED_HIGH HIGH
+#define FREE_HEAP_DELTAS 5
 
-// Constants and state
+// Constants
 const int LED_PIN = 9;
 const int BUTTON_PIN = 21; // BUTTON NOT IN USE
 const char *wifi_ssid = "MySpectrumWiFi00-2G";
@@ -20,12 +22,19 @@ const int port = 8000;
 const String header1 = "POST / HTTP/1.1\n"
                        "Host: ";
 const String header2 = "Content-Type: application/json\n"
-                       "Content-Length:";
+                       "Content-Length: ";
+
+// State
 float t1, t2, t3, h1, h2, h3;
 float *sensor_data[6] = {&t1, &h1, &t2, &h2, &t3, &h3};
+uint32_t free_heap[2];
+int free_heap_deltas[FREE_HEAP_DELTAS],
+    delta_array_length = sizeof(free_heap_deltas) / sizeof(free_heap_deltas[0]);
 
 DHT22 sensor1(0), sensor2(1), sensor3(2);
 WiFiClient client;
+String s_result;
+char *json_result;
 
 /////////////
 //// Function Declarations
@@ -59,49 +68,90 @@ void setup() {
   Serial.print("WiFi Connected to: ");
   Serial.println(wifi_ssid);
 
+  // Connect to server
+  client.connect(server, port);
+
   delay(1000);
 }
 
 void loop() {
   // Get Data
+  int connection_retries = 3;
   t1 = sensor1.getTemperature(0), h1 = sensor1.getHumidity();
   t2 = sensor2.getTemperature(0), h2 = sensor2.getHumidity();
   t3 = sensor3.getTemperature(0), h3 = sensor3.getHumidity();
 
-  Serial.printf("Raw sensor data for t1: %f \n", *sensor_data[0]);
-
-  // Connect to server
-  client.connect(server, port);
-
-  // Get cJSON result
+connect:
+  // Sensor data to cJSON struct
   cJSON *c_result = sensor_data_as_JSON(sensor_data, device_id);
 
-  // Format cJSON to string
-  String s_result(cJSON_Print(c_result));
+  // cJSON to c_string
+  json_result = cJSON_Print(c_result);
+  s_result = String(json_result);
 
-  // Delete cJSON
+  // Delete cJSON struct
   cJSON_Delete(c_result);
+  // Free the damned string!
+  free(json_result);
 
-  // Send Data
-  String header = "POST / HTTP/1.1\n"
-                  "Host: 10.0.0.41:8000\n"
-                  "Content-Type: application/json\n"
-                  "Content-Length:";
+  // Check & retry connection
+  while (!client.connected()) {
+    LED_indicate_warning();
+    client.stop();
 
-  client.print(header);
+    // Retry Loop
+    if (connection_retries > 0) {
+      client.connect(server, port);
+      Serial.printf("Connection Lost: %d more retries.\n\n",
+                    connection_retries--);
+    }
+
+    // Static Failure
+    if (connection_retries <= 0) {
+      Serial.println("Could not connect. I've given up :(");
+    }
+
+    delay(1000);
+  }
+
+  // Print payload to console
+  Serial.println("\n--- Begin send ---\n");
+  Serial.print(header1);
+  Serial.printf("%s:%d\n", server, port);
+  Serial.print(header2);
+  Serial.printf("%d\n\n", s_result.length());
+  Serial.println(s_result);
+  Serial.println("--- End send ---\n");
+
+  // Send payload to server
+  client.print(header1);
+  client.printf("%s:%d\n", server, port);
+  client.print(header2);
   client.printf("%d\n\n", s_result.length());
   client.println(s_result);
 
-  // while (client.connected())
-  // {
-  //   String line = client.readStringUntil('\n');
-  //   if (line == "\r") break;
-  //   Serial.println(line);
-  // }
+  // Print response
+  Serial.printf("\n\n--- Begin recieve: %d bytes ---\n", client.available());
+  while (client.available())
+    Serial.printf("%c", client.read());
+  Serial.printf("\n\n--- End recieve ---\n");
 
-  // Disconnect from Server
-  client.flush();
-  client.stop();
+  // Free Heap delta logic
+  free_heap[0] = free_heap[1];
+  free_heap[1] = ESP.getFreeHeap();
+  for (int i = 0; i < delta_array_length - 1; i++)
+    free_heap_deltas[i] = free_heap_deltas[i + 1];
+  free_heap_deltas[delta_array_length - 1] = free_heap[1] - free_heap[0];
+
+  // Printf debugging
+  Serial.println("--- Debug Info Begin --- ");
+  Serial.printf("Free heap current length: %u\n", ESP.getFreeHeap());
+  Serial.printf("Free heap previous deltas: %d, %d, %d, %d, %d \n",
+                free_heap_deltas[0], free_heap_deltas[1], free_heap_deltas[2],
+                free_heap_deltas[3], free_heap_deltas[4]);
+  Serial.printf("WiFi status: %d\n", WiFi.status());
+  Serial.printf("Client connected: %d\n", client.connected());
+  Serial.println("--- Debug Info End --- ");
 
   // Do Stuff With UI
   LED_indicate_stable();
@@ -145,6 +195,3 @@ void LED_indicate_warning(void) {
 
 // TODO: Figure out why device stops working and shit.
 // TODO: Swap arbitrary_id with preprogramm id
-// TODO: Figure move big ass function to a seperate file
-// TODO: Format doubles to fixed decimal places
-// TODO: Reformat header away from `header` to `header1` & `header2`
