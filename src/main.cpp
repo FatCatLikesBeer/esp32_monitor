@@ -1,6 +1,7 @@
 #include "WiFi.h"
 #include "cJSON.h"
 #include "dht22.h"
+#include "esp_mac.h"
 #include "jsonmaker.hpp"
 #include <Arduino.h>
 #include <cmath>
@@ -17,7 +18,6 @@ const int BUTTON_PIN = 21; // BUTTON NOT IN USE
 const char *wifi_ssid = "MySpectrumWiFi00-2G";
 const char *wifi_pswd = "proudzebra986";
 const char *server = "10.0.0.2";
-const char device_id[] = "955f0437370605b644dd5168f7432ecb91046249";
 const int port = 8000;
 const String header1 = "POST / HTTP/1.1\n"
                        "Host: ";
@@ -35,6 +35,9 @@ DHT22 sensor1(0), sensor2(1), sensor3(2);
 WiFiClient client;
 String s_result;
 char *json_result;
+uint8_t mac[6];
+uint64_t chip_id;
+String device_id;
 
 /////////////
 //// Function Declarations
@@ -49,6 +52,12 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT_PULLDOWN);
   digitalWrite(LED_PIN, LED_LOW);
+
+  // Get MAC address
+  esp_read_mac(mac, ESP_MAC_WIFI_STA);
+  for (int i = 0; i < 6; i++)
+    chip_id |= ((uint64_t)mac[i]) << (i * 8);
+  device_id = String(chip_id);
 
   // Init Wifi
   WiFi.begin(wifi_ssid, wifi_pswd);
@@ -81,9 +90,8 @@ void loop() {
   t2 = sensor2.getTemperature(0), h2 = sensor2.getHumidity();
   t3 = sensor3.getTemperature(0), h3 = sensor3.getHumidity();
 
-connect:
   // Sensor data to cJSON struct
-  cJSON *c_result = sensor_data_as_JSON(sensor_data, device_id);
+  cJSON *c_result = sensor_data_as_JSON(sensor_data, device_id.c_str());
 
   // cJSON to c_string
   json_result = cJSON_Print(c_result);
