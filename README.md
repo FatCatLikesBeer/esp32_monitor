@@ -6,8 +6,9 @@
 
 ## Description
 
-* Microcontroller (monitor) is includes 3 temperature and humidity sensors.
-* Monitor polls sensors, encodes data in JSON, and sends the request every 10 seconds.
+* Microcontroller (device/monitor) includes 3 temperature and humidity sensors.
+* Monitor polls sensors, encodes data in JSON, and sends the request every 10ish seconds.
+* Monitor sends data over 2.4GHz wifi
 
 ## Technical
 
@@ -18,5 +19,5 @@
 
 ## TODOs
 
-* Create a script that generates a one time key if none exists
-* Create and use a .env file
+* ~~Create a script that generates a one time key if none exists~~
+* ~~Create and use a credentials.h file~~

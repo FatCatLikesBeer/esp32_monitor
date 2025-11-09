@@ -1,5 +1,6 @@
 #include "WiFi.h"
 #include "cJSON.h"
+#include "credentials.h"
 #include "dht22.h"
 #include "esp_mac.h"
 #include "jsonmaker.hpp"
@@ -15,10 +16,10 @@
 // Constants
 const int LED_PIN = 9;
 const int BUTTON_PIN = 21; // BUTTON NOT IN USE
-const char *wifi_ssid = "MySpectrumWiFi00-2G";
-const char *wifi_pswd = "proudzebra986";
-const char *server = "10.0.0.2";
-const int port = 8000;
+const char *wifi_ssid = WIFI_SSID;
+const char *wifi_pswd = WIFI_PASS;
+const char *server = SERVER_IP;
+const int port = SERVER_PORT;
 const String header1 = "POST / HTTP/1.1\n"
                        "Host: ";
 const String header2 = "Content-Type: application/json\n"
@@ -200,6 +201,3 @@ void LED_indicate_warning(void) {
   }
   digitalWrite(LED_PIN, LED_LOW);
 }
-
-// TODO: Figure out why device stops working and shit.
-// TODO: Swap arbitrary_id with preprogramm id
