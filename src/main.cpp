@@ -1,7 +1,9 @@
 #include "WiFi.h"
 #include "cJSON.h"
-#include "credentials.h"
+// #include "credentials.h"
+#include "credentials.secret.h"
 #include "dht22.h"
+#include "esp32-hal-gpio.h"
 #include "esp_mac.h"
 #include "jsonmaker.hpp"
 #include <Arduino.h>
@@ -13,11 +15,18 @@
 #define LED_HIGH HIGH
 #define FREE_HEAP_DELTAS 5
 
+// Structs
+struct WifiConnection {
+  const char *ssid;
+  const char *pass;
+};
+
 // Constants
 const int LED_PIN = 9;
-const int BUTTON_PIN = 21; // BUTTON NOT IN USE
-const char *wifi_ssid = WIFI_SSID;
-const char *wifi_pswd = WIFI_PASS;
+const int DEV_PIN = 4;
+const int SENSOR_PIN0 = 0;
+const int SENSOR_PIN1 = 1;
+const int SENSOR_PIN2 = 2;
 const char *server = SERVER_IP;
 const int port = SERVER_PORT;
 const String header1 = "POST / HTTP/1.1\n"
@@ -32,13 +41,15 @@ uint32_t free_heap[2];
 int free_heap_deltas[FREE_HEAP_DELTAS],
     delta_array_length = sizeof(free_heap_deltas) / sizeof(free_heap_deltas[0]);
 
-DHT22 sensor1(0), sensor2(1), sensor3(2);
+DHT22 sensor1(SENSOR_PIN0), sensor2(SENSOR_PIN1), sensor3(SENSOR_PIN2);
 WiFiClient client;
 String s_result;
 char *json_result;
 uint8_t mac[6];
 uint64_t chip_id;
 String device_id;
+
+WifiConnection target_network;
 
 /////////////
 //// Function Declarations
@@ -49,10 +60,23 @@ void LED_indicate_stable();
 void LED_indicate_warning();
 
 void setup() {
+  target_network.ssid = LOCAL_WIFI_SSID;
+  target_network.pass = LOCAL_WIFI_PASS;
+
   Serial.begin(9600);
   pinMode(LED_PIN, OUTPUT);
-  pinMode(BUTTON_PIN, INPUT_PULLDOWN);
+  pinMode(DEV_PIN, INPUT_PULLDOWN);
   digitalWrite(LED_PIN, LED_LOW);
+
+  if (0 == digitalRead(DEV_PIN)) {
+    target_network.ssid = WIFI_SSID;
+    target_network.pass = WIFI_PASS;
+    Serial.println("DEV_PIN: 0");
+    Serial.printf("Normal Mode: connecting to %s\n", target_network.ssid);
+  } else {
+    Serial.println("DEV_PIN: 1");
+    Serial.printf("Dev Mode: connecting to %s\n", target_network.ssid);
+  }
 
   // Get MAC address
   esp_read_mac(mac, ESP_MAC_WIFI_STA);
@@ -61,7 +85,7 @@ void setup() {
   device_id = String(chip_id);
 
   // Init Wifi
-  WiFi.begin(wifi_ssid, wifi_pswd);
+  WiFi.begin(target_network.ssid, target_network.pass);
   byte ssid_total = WiFi.scanNetworks();
 
   while (WL_CONNECTED != WiFi.status()) {
@@ -76,7 +100,7 @@ void setup() {
   Serial.print("Networks found: ");
   Serial.println(ssid_total);
   Serial.print("WiFi Connected to: ");
-  Serial.println(wifi_ssid);
+  Serial.println(target_network.ssid);
 
   // Connect to server
   client.connect(server, port);
@@ -154,6 +178,7 @@ void loop() {
 
   // Printf debugging
   Serial.println("--- Debug Info Begin --- ");
+  Serial.printf("DEV_PIN: %d\n", digitalRead(DEV_PIN));
   Serial.printf("Free heap current length: %u\n", ESP.getFreeHeap());
   Serial.printf("Free heap previous deltas: %d, %d, %d, %d, %d \n",
                 free_heap_deltas[0], free_heap_deltas[1], free_heap_deltas[2],
