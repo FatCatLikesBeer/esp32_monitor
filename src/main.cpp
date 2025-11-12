@@ -1,6 +1,6 @@
 #include "WiFi.h"
 #include "cJSON.h"
-// #include "credentials.h"
+#include "credentials.h"
 #include "credentials.secret.h"
 #include "dht22.h"
 #include "esp32-hal-gpio.h"
@@ -40,7 +40,6 @@ float *sensor_data[6] = {&t1, &h1, &t2, &h2, &t3, &h3};
 uint32_t free_heap[2];
 int free_heap_deltas[FREE_HEAP_DELTAS],
     delta_array_length = sizeof(free_heap_deltas) / sizeof(free_heap_deltas[0]);
-
 DHT22 sensor1(SENSOR_PIN0), sensor2(SENSOR_PIN1), sensor3(SENSOR_PIN2);
 WiFiClient client;
 String s_result;
@@ -54,9 +53,10 @@ WifiConnection target_network;
 /////////////
 //// Function Declarations
 /////////////
+
 // Blink quickly every 2-3 seconds
 void LED_indicate_stable();
-// Blink slowly eveery 4-5 seconds
+// Blink slowly every 4-5 seconds
 void LED_indicate_warning();
 
 void setup() {
@@ -68,6 +68,7 @@ void setup() {
   pinMode(DEV_PIN, INPUT_PULLDOWN);
   digitalWrite(LED_PIN, LED_LOW);
 
+  // If DEV_PIN is enabled, use dev netwrok
   if (0 == digitalRead(DEV_PIN)) {
     target_network.ssid = WIFI_SSID;
     target_network.pass = WIFI_PASS;
