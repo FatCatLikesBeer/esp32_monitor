@@ -58,6 +58,8 @@ WifiConnection target_network;
 void LED_indicate_stable();
 // Blink slowly every 4-5 seconds
 void LED_indicate_warning();
+// Print Debug Info
+void print_debug_info();
 
 void setup() {
   target_network.ssid = LOCAL_WIFI_SSID;
@@ -142,9 +144,11 @@ void loop() {
 
     // Static Failure
     if (connection_retries <= 0) {
+      print_debug_info();
       Serial.println("Could not connect. I've given up :(");
     }
 
+    print_debug_info();
     delay(1000);
   }
 
@@ -170,23 +174,7 @@ void loop() {
     Serial.printf("%c", client.read());
   Serial.printf("\n\n--- End recieve ---\n");
 
-  // Free Heap delta logic
-  free_heap[0] = free_heap[1];
-  free_heap[1] = ESP.getFreeHeap();
-  for (int i = 0; i < delta_array_length - 1; i++)
-    free_heap_deltas[i] = free_heap_deltas[i + 1];
-  free_heap_deltas[delta_array_length - 1] = free_heap[1] - free_heap[0];
-
-  // Printf debugging
-  Serial.println("--- Debug Info Begin --- ");
-  Serial.printf("DEV_PIN: %d\n", digitalRead(DEV_PIN));
-  Serial.printf("Free heap current length: %u\n", ESP.getFreeHeap());
-  Serial.printf("Free heap previous deltas: %d, %d, %d, %d, %d \n",
-                free_heap_deltas[0], free_heap_deltas[1], free_heap_deltas[2],
-                free_heap_deltas[3], free_heap_deltas[4]);
-  Serial.printf("WiFi status: %d\n", WiFi.status());
-  Serial.printf("Client connected: %d\n", client.connected());
-  Serial.println("--- Debug Info End --- ");
+  print_debug_info();
 
   // Do Stuff With UI
   LED_indicate_stable();
@@ -226,4 +214,24 @@ void LED_indicate_warning(void) {
       state = false;
   }
   digitalWrite(LED_PIN, LED_LOW);
+}
+
+void print_debug_info() {
+  // Free Heap delta logic
+  free_heap[0] = free_heap[1];
+  free_heap[1] = ESP.getFreeHeap();
+  for (int i = 0; i < delta_array_length - 1; i++)
+    free_heap_deltas[i] = free_heap_deltas[i + 1];
+  free_heap_deltas[delta_array_length - 1] = free_heap[1] - free_heap[0];
+
+  // Printf debugging
+  Serial.println("--- Debug Info Begin --- ");
+  Serial.printf("DEV_PIN: %d\n", digitalRead(DEV_PIN));
+  Serial.printf("Free heap current length: %u\n", ESP.getFreeHeap());
+  Serial.printf("Free heap previous deltas: %d, %d, %d, %d, %d \n",
+                free_heap_deltas[0], free_heap_deltas[1], free_heap_deltas[2],
+                free_heap_deltas[3], free_heap_deltas[4]);
+  Serial.printf("WiFi status: %d\n", WiFi.status());
+  Serial.printf("Client connected: %d\n", client.connected());
+  Serial.println("--- Debug Info End --- ");
 }
