@@ -1,4 +1,5 @@
 #include "WiFi.h"
+#include "WiFiClient.h"
 #include "cJSON.h"
 #include "credentials.h"
 #include "credentials.secret.h"
@@ -9,19 +10,7 @@
 #define LED_LOW LOW
 #define LED_HIGH HIGH
 #define FREE_HEAP_DELTAS 5
-
-// Structs
-struct WifiConnection {
-  const char *ssid;
-  const char *pass;
-  const char *server;
-  int port;
-};
-
-struct SensorData {
-  float temperature;
-  float humidity;
-};
+#define SENSOR_COUNT 3
 
 // Constants
 const int LED_PIN = 9;
@@ -35,21 +24,19 @@ const String header2 = "Content-Type: application/json\n"
                        "Content-Length: ";
 
 // State & Objects
-float t1, t2, t3, h1, h2, h3;
-float *sensor_data[6] = {&t1, &h1, &t2, &h2, &t3, &h3};
 uint32_t free_heap[2];
 int free_heap_deltas[FREE_HEAP_DELTAS],
     delta_array_length = sizeof(free_heap_deltas) / sizeof(free_heap_deltas[0]);
-DHT22 sensor1(SENSOR_PIN0), sensor2(SENSOR_PIN1), sensor3(SENSOR_PIN2);
-WiFiClient client;
-String s_result;
 char *json_result;
 uint8_t mac[6];
 uint64_t chip_id;
-String device_id;
-SensorData *data_container[3];
 
+WiFiClient client;
+String s_result;
+String device_id;
 WifiConnection target_network;
+SensorData *readings_container[SENSOR_COUNT];
+DHT22 *sensor_container[SENSOR_COUNT];
 
 /////////////
 //// Function Declarations
@@ -63,6 +50,12 @@ void LED_indicate_warning();
 void print_debug_info();
 
 void setup() {
+  // Initilize objects, assign refrences to containers
+  for (int i = 0; i < SENSOR_COUNT; i++) {
+    readings_container[i] = new SensorData;
+    sensor_container[i] = new DHT22(i);
+  }
+
   target_network.ssid = DEV_WIFI_SSID;
   target_network.pass = DEV_WIFI_PASS;
   target_network.server = DEV_SERVER_IP;
@@ -119,12 +112,15 @@ void setup() {
 void loop() {
   // Get Data
   int connection_retries = 3;
-  t1 = sensor1.getTemperature(0), h1 = sensor1.getHumidity();
-  t2 = sensor2.getTemperature(0), h2 = sensor2.getHumidity();
-  t3 = sensor3.getTemperature(0), h3 = sensor3.getHumidity();
+
+  // Read data from sensors
+  for (int i = 0; i < SENSOR_COUNT; i++) {
+    readings_container[i]->temperature = sensor_container[i]->getTemperature(0);
+    readings_container[i]->humidity = sensor_container[i]->getHumidity();
+  }
 
   // Sensor data to cJSON struct
-  cJSON *c_result = sensor_data_as_JSON(sensor_data, device_id.c_str());
+  cJSON *c_result = sensor_data_as_JSON(readings_container, device_id.c_str());
 
   // cJSON to c_string
   json_result = cJSON_Print(c_result);
@@ -132,7 +128,9 @@ void loop() {
 
   // Delete cJSON struct
   cJSON_Delete(c_result);
-  // Free the damned string!
+
+  // Free the damned string pointer!
+  // I know this looks weird, but it does something
   free(json_result);
 
   // Check & retry connection
@@ -186,7 +184,6 @@ void loop() {
   delay(10000);
 }
 
-// Few quick blinks every 2-3 seconds
 void LED_indicate_stable(void) {
   ulong base_time = millis(), on_time = millis();
   bool state = true;
