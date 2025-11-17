@@ -3,13 +3,8 @@
 #include "credentials.h"
 #include "credentials.secret.h"
 #include "dht22.h"
-#include "esp32-hal-gpio.h"
-#include "esp_mac.h"
 #include "jsonmaker.hpp"
 #include <Arduino.h>
-#include <cmath>
-#include <ctime>
-#include <string>
 
 #define LED_LOW LOW
 #define LED_HIGH HIGH
@@ -19,6 +14,13 @@
 struct WifiConnection {
   const char *ssid;
   const char *pass;
+  const char *server;
+  int port;
+};
+
+struct SensorData {
+  float temperature;
+  float humidity;
 };
 
 // Constants
@@ -27,14 +29,12 @@ const int DEV_PIN = 4;
 const int SENSOR_PIN0 = 0;
 const int SENSOR_PIN1 = 1;
 const int SENSOR_PIN2 = 2;
-const char *server = SERVER_IP;
-const int port = SERVER_PORT;
 const String header1 = "POST / HTTP/1.1\n"
                        "Host: ";
 const String header2 = "Content-Type: application/json\n"
                        "Content-Length: ";
 
-// State
+// State & Objects
 float t1, t2, t3, h1, h2, h3;
 float *sensor_data[6] = {&t1, &h1, &t2, &h2, &t3, &h3};
 uint32_t free_heap[2];
@@ -47,6 +47,7 @@ char *json_result;
 uint8_t mac[6];
 uint64_t chip_id;
 String device_id;
+SensorData *data_container[3];
 
 WifiConnection target_network;
 
@@ -62,8 +63,10 @@ void LED_indicate_warning();
 void print_debug_info();
 
 void setup() {
-  target_network.ssid = LOCAL_WIFI_SSID;
-  target_network.pass = LOCAL_WIFI_PASS;
+  target_network.ssid = DEV_WIFI_SSID;
+  target_network.pass = DEV_WIFI_PASS;
+  target_network.server = DEV_SERVER_IP;
+  target_network.port = DEV_SERVER_PORT;
 
   Serial.begin(9600);
   pinMode(LED_PIN, OUTPUT);
@@ -74,6 +77,8 @@ void setup() {
   if (0 == digitalRead(DEV_PIN)) {
     target_network.ssid = WIFI_SSID;
     target_network.pass = WIFI_PASS;
+    target_network.server = SERVER_IP;
+    target_network.port = SERVER_PORT;
     Serial.println("DEV_PIN: 0");
     Serial.printf("Normal Mode: connecting to %s\n", target_network.ssid);
   } else {
@@ -106,7 +111,7 @@ void setup() {
   Serial.println(target_network.ssid);
 
   // Connect to server
-  client.connect(server, port);
+  client.connect(target_network.server, target_network.port);
 
   delay(1000);
 }
@@ -137,7 +142,7 @@ void loop() {
 
     // Retry Loop
     if (connection_retries > 0) {
-      client.connect(server, port);
+      client.connect(target_network.server, target_network.port);
       Serial.printf("Connection Lost: %d more retries.\n\n",
                     connection_retries--);
     }
@@ -155,7 +160,7 @@ void loop() {
   // Print payload to console
   Serial.println("\n--- Begin send ---\n");
   Serial.print(header1);
-  Serial.printf("%s:%d\n", server, port);
+  Serial.printf(target_network.server, target_network.port);
   Serial.print(header2);
   Serial.printf("%d\n\n", s_result.length());
   Serial.println(s_result);
@@ -163,7 +168,7 @@ void loop() {
 
   // Send payload to server
   client.print(header1);
-  client.printf("%s:%d\n", server, port);
+  client.printf("%s:%d\n", target_network.server, target_network.port);
   client.print(header2);
   client.printf("%d\n\n", s_result.length());
   client.println(s_result);

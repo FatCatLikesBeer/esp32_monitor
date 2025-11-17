@@ -1,38 +1,31 @@
 #include "jsonmaker.hpp"
 #include "cJSON.h"
+#include <stdio.h>
+
+#define SENSOR_COUNT 3
 
 cJSON *sensor_data_as_JSON(float *data[6], const char device_id[]) {
+  char name_buffer[32];
+  cJSON *p_names[SENSOR_COUNT];
   cJSON *result = cJSON_CreateObject();
   cJSON *name = cJSON_CreateString(device_id);
-  cJSON *temp1 = cJSON_CreateNumber(*data[0]);
-  cJSON *hume1 = cJSON_CreateNumber(*data[1]);
-  cJSON *temp2 = cJSON_CreateNumber(*data[2]);
-  cJSON *hume2 = cJSON_CreateNumber(*data[3]);
-  cJSON *temp3 = cJSON_CreateNumber(*data[4]);
-  cJSON *hume3 = cJSON_CreateNumber(*data[5]);
-  cJSON *name1 = cJSON_CreateString("sensor1");
-  cJSON *name2 = cJSON_CreateString("sensor2");
-  cJSON *name3 = cJSON_CreateString("sensor3");
-  cJSON *block1 = cJSON_CreateObject();
-  cJSON *block2 = cJSON_CreateObject();
-  cJSON *block3 = cJSON_CreateObject();
   cJSON *data_array = cJSON_CreateArray();
 
-  cJSON_AddItemToObject(block1, "name", name1);
-  cJSON_AddItemToObject(block1, "temperature", temp1);
-  cJSON_AddItemToObject(block1, "humidity", hume1);
+  for (int i = 0; i < SENSOR_COUNT; i++) {
+    sprintf(name_buffer, "%s%s%d", device_id, "_", i + 1);
 
-  cJSON_AddItemToObject(block2, "name", name2);
-  cJSON_AddItemToObject(block2, "temperature", temp2);
-  cJSON_AddItemToObject(block2, "humidity", hume2);
+    cJSON *object = cJSON_CreateObject();
+    cJSON *name = cJSON_CreateString(name_buffer);
+    cJSON *temperature = cJSON_CreateNumber(*data[i]);
+    cJSON *humidity = cJSON_CreateNumber(*data[i + 1]);
 
-  cJSON_AddItemToObject(block3, "name", name3);
-  cJSON_AddItemToObject(block3, "temperature", temp3);
-  cJSON_AddItemToObject(block3, "humidity", hume3);
+    cJSON_AddItemToObject(object, "name", name);
+    cJSON_AddItemToObject(object, "temperature", temperature);
+    cJSON_AddItemToObject(object, "humidity", humidity);
 
-  cJSON_AddItemToObject(data_array, "sensor1", block1);
-  cJSON_AddItemToObject(data_array, "sensor2", block2);
-  cJSON_AddItemToObject(data_array, "sensor3", block3);
+    cJSON_AddItemToArray(data_array, object);
+  }
+
   cJSON_AddItemToObject(result, "device_id", name);
   cJSON_AddItemToObject(result, "data", data_array);
 

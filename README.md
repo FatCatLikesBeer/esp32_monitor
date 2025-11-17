@@ -19,6 +19,7 @@
 
 ## TODOs
 
-* Include server IP and port in dev/prod automation
+* Implement: shared secret with backend
+* ~~Include server IP and port in dev/prod automation~~
 * ~~Create a script that generates a one time key if none exists~~
 * ~~Create and use a credentials.h file~~
