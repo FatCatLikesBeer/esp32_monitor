@@ -20,7 +20,7 @@ const int SENSOR_PIN1 = 1;
 const int SENSOR_PIN2 = 2;
 const String header1 = "POST / HTTP/1.1\n"
                        "Host: ";
-const String header2 = "Content-Type: application/json\n"
+const String header2 = "Content-Type: application/json;charset=UTF-8\n"
                        "Content-Length: ";
 
 // State & Objects
@@ -159,6 +159,8 @@ void loop() {
   Serial.println("\n--- Begin send ---\n");
   Serial.print(header1);
   Serial.printf(target_network.server, target_network.port);
+  Serial.println();
+
   Serial.print(header2);
   Serial.printf("%d\n\n", s_result.length());
   Serial.println(s_result);
